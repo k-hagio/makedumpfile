@@ -39,6 +39,11 @@ show_version(void)
 #else
 	MSG("snappy\tdisabled\n");
 #endif
+#ifdef USEZSTD
+	MSG("zstd\tenabled\n");
+#else
+	MSG("zstd\tdisabled\n");
+#endif
 	MSG("\n");
 }
 
@@ -57,6 +62,12 @@ print_usage(void)
 	MSG("  enabled\n");
 #else
 	MSG("  disabled ('-p' option will be ignored.)\n");
+#endif
+	MSG("zstd support:\n");
+#ifdef USEZSTD
+	MSG("  enabled\n");
+#else
+	MSG("  disabled ('-z' option will be ignored.)\n");
 #endif
 	MSG("\n");
 	MSG("Usage:\n");

@@ -68,6 +68,11 @@ endif
 CFLAGS += -DUSESNAPPY
 endif
 
+ifeq ($(USEZSTD), on)
+LIBS := -lzstd $(LIBS)
+CFLAGS += -DUSEZSTD
+endif
+
 LIBS := -lpthread $(LIBS)
 
 try-run = $(shell set -e;		\

@@ -38,6 +38,9 @@
 #ifdef USESNAPPY
 #include <snappy-c.h>
 #endif
+#ifdef USEZSTD
+#include <zstd.h>
+#endif
 #include "common.h"
 #include "dwarf_info.h"
 #include "diskdump_mod.h"
@@ -2344,6 +2347,7 @@ struct elf_prstatus {
 #define OPT_VERSION             'v'
 #define OPT_EXCLUDE_XEN_DOM     'X'
 #define OPT_VMLINUX             'x'
+#define OPT_COMPRESS_ZSTD       'z'
 #define OPT_START               256
 #define OPT_SPLIT               OPT_START+0
 #define OPT_REASSEMBLE          OPT_START+1
