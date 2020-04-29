@@ -1317,6 +1317,7 @@ struct DumpInfo {
 	int             flag_partial_dmesg;  /* dmesg dump only from the last cleared index*/
 	int             flag_mem_usage;  /*show the page number of memory in different use*/
 	int		flag_use_printk_log; /* did we read printk_log symbol name? */
+	int		flag_use_printk_ringbuffer; /* using lockless printk ringbuffer? */
 	int		flag_nospace;	     /* the flag of "No space on device" error */
 	int		flag_vmemmap;        /* kernel supports vmemmap address space */
 	int		flag_excludevm;      /* -e - excluding unused vmemmap pages */
@@ -1602,6 +1603,7 @@ struct symbol_table {
 	unsigned long long	node_data;
 	unsigned long long	pgdat_list;
 	unsigned long long	contig_page_data;
+	unsigned long long	prb;
 	unsigned long long	log_buf;
 	unsigned long long	log_buf_len;
 	unsigned long long	log_end;
@@ -1688,6 +1690,12 @@ struct size_table {
 	long	node_memblk_s;
 	long	nodemask_t;
 	long	printk_log;
+
+	/*
+	 * for lockless printk
+	 */
+	long	printk_ringbuffer;
+	long	prb_desc;
 
 	/*
 	 * for Xen extraction
@@ -1862,6 +1870,20 @@ struct offset_table {
 		long ts_nsec;
 		long len;
 		long text_len;
+		long desc_ring;
+		long text_data_ring;
+		long count_bits;
+		long descs;
+		long head_id;
+		long tail_id;
+		long info;
+		long state_var;
+		long text_blk_lpos;
+		long begin;
+		long next;
+		long size_bits;
+		long data;
+		long counter;
 	} printk_log;
 
 	/*
@@ -2389,5 +2411,8 @@ ulong htol(char *s, int flags);
 int hexadecimal(char *s, int count);
 int decimal(char *s, int count);
 int file_exists(char *file);
+
+int open_dump_file(void);
+int dump_lockless_dmesg(void);
 
 #endif /* MAKEDUMPFILE_H */
