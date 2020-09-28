@@ -1,0 +1,33 @@
+arch:
+  - amd64
+  - arm64
+  - ppc64le
+  - s390x
+os: linux
+dist: focal # cannot build matrix
+language: c
+compiler: gcc
+before_install:
+  - sudo apt-get update
+  - sudo apt-get -y install libdw-dev libelf-dev zlib1g-dev libbz2-dev liblzo2-dev libsnappy-dev
+before_script:
+  - dpkg -l
+script:
+  - make LINKTYPE=dynamic
+  - make clean
+  - make LINKTYPE=dynamic USELZO=on USESNAPPY=on
+  - ./makedumpfile -v
+jobs:
+  include:
+    - os: linux
+      dist: xenial
+      arch: amd64
+    - os: linux
+      dist: xenial
+      arch: arm64
+    - os: linux
+      dist: xenial
+      arch: ppc64le
+    - os: linux
+      dist: xenial
+      arch: s390x

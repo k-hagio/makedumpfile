@@ -74,6 +74,9 @@ GRTAGS
 GSYMS
 GTAGS
 
+# Travis CI
+!.travis.yml
+
 *.orig
 *~
 \#*#
