@@ -50,5 +50,15 @@
 #define NOT_PADDR	(ULONGLONG_MAX)
 #define BADADDR  	((ulong)(-1))
 
+/* Indirect stringification.  Doing two levels allows the parameter to be a
+ * macro itself.  For example, compile with -DFOO=bar, __stringify(FOO)
+ * converts to "bar".
+ *
+ * Copied from linux source: 'include/linux/stringify.h'
+ */
+
+#define __stringify_1(x...)	#x
+#define __stringify(x...)	__stringify_1(x)
+
 #endif  /* COMMON_H */
 
