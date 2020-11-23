@@ -974,7 +974,7 @@ unsigned long long vaddr_to_paddr_arm64(unsigned long vaddr);
 int get_versiondep_info_arm64(void);
 int get_xen_basic_info_arm64(void);
 int get_xen_info_arm64(void);
-#define paddr_to_vaddr_arm64(X) ((info->kernel_version < KERNEL_VERSION(5, 4, 0)) ?	\
+#define paddr_to_vaddr_arm64(X) ((info->release_kernel_version < KERNEL_VERSION(5, 4, 0)) ? \
 				 ((X) - (info->phys_base - PAGE_OFFSET)) :		\
 				 (((X) - info->phys_base) | PAGE_OFFSET))
 
@@ -2454,7 +2454,6 @@ ulong htol(char *s, int flags);
 int hexadecimal(char *s, int count);
 int decimal(char *s, int count);
 int file_exists(char *file);
-int populate_kernel_version(void);
 
 int open_dump_file(void);
 int dump_lockless_dmesg(void);

@@ -1133,7 +1133,7 @@ fallback_to_current_page_size(void)
 	return TRUE;
 }
 
-int populate_kernel_version(void)
+static int populate_kernel_version(void)
 {
 	struct utsname utsname;
 

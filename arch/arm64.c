@@ -236,7 +236,7 @@ pmd_page_paddr(pmd_t pmd)
  * space. Testing the top bit for the start of the region is a
  * sufficient check and avoids having to worry about the tag.
  */
-#define is_linear_addr(addr)	((info->kernel_version < KERNEL_VERSION(5, 4, 0)) ?	\
+#define is_linear_addr(addr)	((info->release_kernel_version < KERNEL_VERSION(5, 4, 0)) ?	\
 	(!!((unsigned long)(addr) & (1UL << (vabits_actual - 1)))) : \
 	(!((unsigned long)(addr) & (1UL << (vabits_actual - 1)))))
 
@@ -245,7 +245,7 @@ __pa(unsigned long vaddr)
 {
 	if (kimage_voffset == NOT_FOUND_NUMBER ||
 			is_linear_addr(vaddr)) {
-		if (info->kernel_version < KERNEL_VERSION(5, 4, 0))
+		if (info->release_kernel_version < KERNEL_VERSION(5, 4, 0))
 			return ((vaddr & ~PAGE_OFFSET) + info->phys_base);
 		else
 			return (vaddr + info->phys_base - PAGE_OFFSET);
@@ -492,15 +492,11 @@ get_page_offset_arm64(void)
 					vabits_actual);
 	}
 
-	if (!populate_kernel_version()) {
-		ERRMSG("Cannot get information about current kernel\n");
-		return;
-	}
 
 	/* See arch/arm64/include/asm/memory.h for more details of
 	 * the PAGE_OFFSET calculation.
 	 */
-	if (info->kernel_version < KERNEL_VERSION(5, 4, 0))
+	if (info->release_kernel_version < KERNEL_VERSION(5, 4, 0))
 		info->page_offset = ((0xffffffffffffffffUL) -
 				((1UL) << (vabits_actual - 1)) + 1);
 	else
