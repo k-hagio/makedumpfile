@@ -1441,6 +1441,7 @@ struct DumpInfo {
 	FILE			*file_vmcoreinfo;
 	char			*name_vmcoreinfo;	     /* vmcoreinfo file */
 	char			release[STRLEN_OSRELEASE];
+	int32_t			release_kernel_version; /* extracted from release */
 	int			read_text_vmcoreinfo;
 
 	/*

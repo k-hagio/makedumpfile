@@ -2452,6 +2452,32 @@ generate_vmcoreinfo(void)
 	return TRUE;
 }
 
+static void
+update_release_kernel_version(void)
+{
+	char *endp, *curp;
+	unsigned int kver_maj, kver_min, kver_rel;
+
+	curp = info->release;
+	kver_maj = strtoul(curp, &endp, 10);
+	if ((curp != endp) && (endp[0] == '.')) {
+		curp = endp + 1;
+		kver_min = strtoul(curp, &endp, 10);
+		if ((curp != endp) && (endp[0] == '.')) {
+			curp = endp + 1;
+			kver_rel =  strtoul(curp, &endp, 10);
+			if (curp != endp) {
+				info->release_kernel_version = KERNEL_VERSION(kver_maj,
+									      kver_min,
+									      kver_rel);
+				return;
+			}
+		}
+	}
+	ERRMSG("Cannot extract kernel version from %s%s\n", STR_OSRELEASE,
+	       info->release);
+}
+
 int
 read_vmcoreinfo_basic_info(void)
 {
@@ -2481,6 +2507,7 @@ read_vmcoreinfo_basic_info(void)
 			if (strlen(info->release))
 				continue;
 			strcpy(info->release, buf + strlen(STR_OSRELEASE));
+			update_release_kernel_version();
 		}
 		if (strncmp(buf, STR_PAGESIZE, strlen(STR_PAGESIZE)) == 0) {
 			page_size = strtol(buf+strlen(STR_PAGESIZE),&endp,10);
