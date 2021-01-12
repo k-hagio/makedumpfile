@@ -11426,6 +11426,7 @@ int show_mem_usage(void)
 {
 	uint64_t vmcoreinfo_addr, vmcoreinfo_len;
 	struct cycle cycle = {0};
+	int vmcoreinfo = FALSE;
 
 	if (!is_crashkernel_mem_reserved()) {
 		ERRMSG("No memory is reserved for crashkernel!\n");
@@ -11437,8 +11438,21 @@ int show_mem_usage(void)
 	if (!open_files_for_creating_dumpfile())
 		return FALSE;
 
-	if (!get_elf_loads(info->fd_memory, info->name_memory))
+	if (!get_elf_info(info->fd_memory, info->name_memory))
 		return FALSE;
+
+	/*
+	 * /proc/kcore on Linux 4.19 and later kernels have vmcoreinfo note in
+	 * NOTE segment.  See commit 23c85094fe18.
+	 */
+	if (has_vmcoreinfo()) {
+		off_t offset;
+		unsigned long size;
+
+		get_vmcoreinfo(&offset, &size);
+		vmcoreinfo = read_vmcoreinfo_from_vmcore(offset, size, FALSE);
+		DEBUG_MSG("Read vmcoreinfo from NOTE segment: %d\n", vmcoreinfo);
+	}
 
 	if (!get_page_offset())
 		return FALSE;
@@ -11447,11 +11461,13 @@ int show_mem_usage(void)
 	if (!get_phys_base())
 		return FALSE;
 
-	if (!get_sys_kernel_vmcoreinfo(&vmcoreinfo_addr, &vmcoreinfo_len))
-		return FALSE;
+	if (!vmcoreinfo) {
+		if (!get_sys_kernel_vmcoreinfo(&vmcoreinfo_addr, &vmcoreinfo_len))
+			return FALSE;
 
-	if (!set_kcore_vmcoreinfo(vmcoreinfo_addr, vmcoreinfo_len))
-		return FALSE;
+		if (!set_kcore_vmcoreinfo(vmcoreinfo_addr, vmcoreinfo_len))
+			return FALSE;
+	}
 
 	if (!initial())
 		return FALSE;
