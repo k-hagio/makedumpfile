@@ -47,6 +47,7 @@ typedef struct {
 static int lpa_52_bit_support_available;
 static int pgtable_level;
 static int va_bits;
+static int vabits_actual;
 static unsigned long kimage_voffset;
 
 #define SZ_4K			4096
@@ -253,6 +254,7 @@ static int calculate_plat_config(void)
 			(PAGESIZE() == SZ_64K && va_bits == 42)) {
 		pgtable_level = 2;
 	} else if ((PAGESIZE() == SZ_64K && va_bits == 48) ||
+			(PAGESIZE() == SZ_64K && va_bits == 52) ||
 			(PAGESIZE() == SZ_4K && va_bits == 39) ||
 			(PAGESIZE() == SZ_16K && va_bits == 47)) {
 		pgtable_level = 3;
@@ -263,6 +265,7 @@ static int calculate_plat_config(void)
 				PAGESIZE(), va_bits);
 		return FALSE;
 	}
+	DEBUG_MSG("pgtable_level: %d\n", pgtable_level);
 
 	return TRUE;
 }
@@ -345,6 +348,63 @@ get_stext_symbol(void)
 	return(found ? kallsym : FALSE);
 }
 
+static int
+get_va_bits_from_stext_arm64(void)
+{
+	ulong _stext;
+
+	_stext = get_stext_symbol();
+	if (!_stext) {
+		ERRMSG("Can't get the symbol of _stext.\n");
+		return FALSE;
+	}
+
+	/* Derive va_bits as per arch/arm64/Kconfig. Note that this is a
+	 * best case approximation at the moment, as there can be
+	 * inconsistencies in this calculation (for e.g., for
+	 * 52-bit kernel VA case, the 48th bit is set in
+	 * the _stext symbol).
+	 *
+	 * So, we need to rely on the vabits_actual symbol in the
+	 * vmcoreinfo or read via system register for a accurate value
+	 * of the virtual addressing supported by the underlying kernel.
+	 */
+	if ((_stext & PAGE_OFFSET_48) == PAGE_OFFSET_48) {
+		va_bits = 48;
+	} else if ((_stext & PAGE_OFFSET_47) == PAGE_OFFSET_47) {
+		va_bits = 47;
+	} else if ((_stext & PAGE_OFFSET_42) == PAGE_OFFSET_42) {
+		va_bits = 42;
+	} else if ((_stext & PAGE_OFFSET_39) == PAGE_OFFSET_39) {
+		va_bits = 39;
+	} else if ((_stext & PAGE_OFFSET_36) == PAGE_OFFSET_36) {
+		va_bits = 36;
+	} else {
+		ERRMSG("Cannot find a proper _stext for calculating VA_BITS\n");
+		return FALSE;
+	}
+
+	DEBUG_MSG("va_bits       : %d (approximation via _stext)\n", va_bits);
+
+	return TRUE;
+}
+
+static void
+get_page_offset_arm64(void)
+{
+	/* See arch/arm64/include/asm/memory.h for more details of
+	 * the PAGE_OFFSET calculation.
+	 */
+	if (info->kernel_version < KERNEL_VERSION(5, 4, 0))
+		info->page_offset = ((0xffffffffffffffffUL) -
+				((1UL) << (vabits_actual - 1)) + 1);
+	else
+		info->page_offset = (-(1UL << vabits_actual));
+
+	DEBUG_MSG("page_offset   : %lx (via vabits_actual)\n",
+			info->page_offset);
+}
+
 int
 get_machdep_info_arm64(void)
 {
@@ -356,11 +416,40 @@ get_machdep_info_arm64(void)
 	} else
 		info->max_physmem_bits = 48;
 
-	/* Check if va_bits is still not initialized. If still 0, call
-	 * get_versiondep_info() to initialize the same.
+	if (NUMBER(VA_BITS) != NOT_FOUND_NUMBER) {
+		va_bits = NUMBER(VA_BITS);
+		DEBUG_MSG("va_bits      : %d (vmcoreinfo)\n", va_bits);
+	} else if (get_va_bits_from_stext_arm64() == FALSE) {
+		ERRMSG("Can't determine va_bits.\n");
+		return FALSE;
+	}
+
+	/* See TCR_EL1, Translation Control Register (EL1) register
+	 * description in the ARMv8 Architecture Reference Manual.
+	 * Basically, we can use the TCR_EL1.T1SZ
+	 * value to determine the virtual addressing range supported
+	 * in the kernel-space (i.e. vabits_actual) since Linux 5.9.
 	 */
-	if (!va_bits)
-		get_versiondep_info_arm64();
+	if (NUMBER(TCR_EL1_T1SZ) != NOT_FOUND_NUMBER) {
+		vabits_actual = 64 - NUMBER(TCR_EL1_T1SZ);
+		DEBUG_MSG("vabits_actual : %d (vmcoreinfo)\n", vabits_actual);
+	} else if ((info->kernel_version >= KERNEL_VERSION(5, 4, 0)) &&
+		    (va_bits == 52) && (SYMBOL(mem_section) != NOT_FOUND_SYMBOL)) {
+		/*
+		 * Linux 5.4 through 5.10 have the following linear space:
+		 *  48-bit: 0xffff000000000000 - 0xffff7fffffffffff
+		 *  58-bit: 0xfff0000000000000 - 0xfff7ffffffffffff
+		 */
+		if (SYMBOL(mem_section) & (1UL << (52 - 1)))
+			vabits_actual = 48;
+		else
+			vabits_actual = 52;
+	} else {
+		vabits_actual = va_bits;
+		DEBUG_MSG("vabits_actual : %d (same as va_bits)\n", vabits_actual);
+	}
+
+	get_page_offset_arm64();
 
 	if (!calculate_plat_config()) {
 		ERRMSG("Can't determine platform config values\n");
@@ -398,35 +487,7 @@ get_xen_info_arm64(void)
 int
 get_versiondep_info_arm64(void)
 {
-	ulong _stext;
-
-	_stext = get_stext_symbol();
-	if (!_stext) {
-		ERRMSG("Can't get the symbol of _stext.\n");
-		return FALSE;
-	}
-
-	/* Derive va_bits as per arch/arm64/Kconfig */
-	if ((_stext & PAGE_OFFSET_36) == PAGE_OFFSET_36) {
-		va_bits = 36;
-	} else if ((_stext & PAGE_OFFSET_39) == PAGE_OFFSET_39) {
-		va_bits = 39;
-	} else if ((_stext & PAGE_OFFSET_42) == PAGE_OFFSET_42) {
-		va_bits = 42;
-	} else if ((_stext & PAGE_OFFSET_47) == PAGE_OFFSET_47) {
-		va_bits = 47;
-	} else if ((_stext & PAGE_OFFSET_48) == PAGE_OFFSET_48) {
-		va_bits = 48;
-	} else {
-		ERRMSG("Cannot find a proper _stext for calculating VA_BITS\n");
-		return FALSE;
-	}
-
-	info->page_offset = (0xffffffffffffffffUL) << (va_bits - 1);
-
-	DEBUG_MSG("va_bits      : %d\n", va_bits);
-	DEBUG_MSG("page_offset  : %lx\n", info->page_offset);
-
+	/* Moved to get_machdep_info_arm64(). */
 	return TRUE;
 }
 

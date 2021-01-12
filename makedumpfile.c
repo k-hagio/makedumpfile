@@ -2480,6 +2480,9 @@ read_vmcoreinfo_basic_info(void)
 			if (strlen(info->release))
 				continue;
 			strcpy(info->release, buf + strlen(STR_OSRELEASE));
+
+			if (!info->kernel_version)
+				info->kernel_version = get_kernel_version(info->release);
 		}
 		if (strncmp(buf, STR_PAGESIZE, strlen(STR_PAGESIZE)) == 0) {
 			page_size = strtol(buf+strlen(STR_PAGESIZE),&endp,10);
@@ -2834,6 +2837,7 @@ read_vmcoreinfo(void)
 	READ_NUMBER("KERNEL_IMAGE_SIZE", KERNEL_IMAGE_SIZE);
 #ifdef __aarch64__
 	READ_NUMBER("VA_BITS", VA_BITS);
+	READ_NUMBER("TCR_EL1_T1SZ", TCR_EL1_T1SZ);
 	READ_NUMBER_UNSIGNED("PHYS_OFFSET", PHYS_OFFSET);
 	READ_NUMBER_UNSIGNED("kimage_voffset", kimage_voffset);
 #endif
@@ -4296,9 +4300,6 @@ out:
 	if (!is_xen_memory() && !cache_init())
 		return FALSE;
 
-	if (info->flag_mem_usage && !get_kcore_dump_loads())
-		return FALSE;
-
 	if (!info->flag_refiltering && !info->flag_sadump) {
 		if (!get_phys_base())
 			return FALSE;
@@ -4376,6 +4377,9 @@ out:
 		return FALSE;
 
 	if (debug_info && !calibrate_machdep_info())
+		return FALSE;
+
+	if (info->flag_mem_usage && !get_kcore_dump_loads())
 		return FALSE;
 
 	if (is_xen_memory() && !get_dom0_mapnr())
@@ -11437,21 +11441,23 @@ int show_mem_usage(void)
 	if (!open_files_for_creating_dumpfile())
 		return FALSE;
 
-	if (!get_elf_loads(info->fd_memory, info->name_memory))
+	if (!get_elf_info(info->fd_memory, info->name_memory))
 		return FALSE;
 
-	if (!get_page_offset())
-		return FALSE;
+	if (!has_vmcoreinfo()) {
+		if (!get_page_offset())
+			return FALSE;
 
-	/* paddr_to_vaddr() on arm64 needs phys_base. */
-	if (!get_phys_base())
-		return FALSE;
+		/* paddr_to_vaddr() on arm64 needs phys_base. */
+		if (!get_phys_base())
+			return FALSE;
 
-	if (!get_sys_kernel_vmcoreinfo(&vmcoreinfo_addr, &vmcoreinfo_len))
-		return FALSE;
+		if (!get_sys_kernel_vmcoreinfo(&vmcoreinfo_addr, &vmcoreinfo_len))
+			return FALSE;
 
-	if (!set_kcore_vmcoreinfo(vmcoreinfo_addr, vmcoreinfo_len))
-		return FALSE;
+		if (!set_kcore_vmcoreinfo(vmcoreinfo_addr, vmcoreinfo_len))
+			return FALSE;
+	}
 
 	if (!initial())
 		return FALSE;

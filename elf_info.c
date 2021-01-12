@@ -628,6 +628,8 @@ get_max_paddr(void)
 
 	for (i = 0; i < num_pt_loads; i++) {
 		pls = &pt_loads[i];
+		if (pls->phys_start == NOT_PADDR)
+			continue;
 		if (max_paddr < pls->phys_end)
 			max_paddr = pls->phys_end;
 	}
