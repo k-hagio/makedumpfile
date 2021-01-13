@@ -1182,6 +1182,7 @@ check_release(void)
 		}
 	}
 
+	info->kernel_version = FALSE;
 	info->kernel_version = get_kernel_version(info->system_utsname.release);
 	if (info->kernel_version == FALSE) {
 		ERRMSG("Can't get the kernel version.\n");
@@ -2480,6 +2481,9 @@ read_vmcoreinfo_basic_info(void)
 			if (strlen(info->release))
 				continue;
 			strcpy(info->release, buf + strlen(STR_OSRELEASE));
+
+			if (!info->kernel_version)
+				info->kernel_version = get_kernel_version(info->release);
 		}
 		if (strncmp(buf, STR_PAGESIZE, strlen(STR_PAGESIZE)) == 0) {
 			page_size = strtol(buf+strlen(STR_PAGESIZE),&endp,10);
