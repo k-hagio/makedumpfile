@@ -1,0 +1,65 @@
+name: Build
+on: push
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        arch:
+        - amd64
+        - arm64
+          #- armhf
+          #- i386
+          #- ppc64el
+          #- s390x
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup Environment and Build
+      env:
+        ARCH: ${{ matrix.arch }}
+      run: |
+        sed -i -e 's/azure.archive/ports/' -e 's/ubuntu\///' /etc/apt/sources.list
+        cat /etc/apt/sources.list
+
+        case $ARCH in
+          amd64)        GNU_ARCH=       # do not cross-compile
+                        TARGET=x86_64
+                        ;;
+          arm64)        GNU_ARCH=aarch64-linux-gnu
+                        TARGET=aarch64
+                        ;;
+          armhf)        GNU_ARCH=arm-linux-gnueabi
+                        TARGET=arm
+                        ;;
+          i386)         GNU_ARCH=i686-linux-gnu
+                        TARGET=x86
+                        ;;
+          ppc64el)      GNU_ARCH=powerpc64le-linux-gnu
+                        TARGET=powerpc64
+                        ;;
+          s390x)        GNU_ARCH=s390x-linux-gnu
+                        TARGET=s390x
+                        ;;
+        esac
+
+        CC=gcc
+        PKGS="libdw-dev libelf-dev zlib1g-dev libbz2-dev liblzo2-dev libsnappy-dev libzstd-dev"
+
+        if [ -n "$GNU_ARCH" ] ; then
+                for pkg in $PKGS ; do
+                    ARCH_PKGS="$ARCH_PKGS $pkg:$ARCH"
+                done
+                PKGS="crossbuild-essential-$ARCH $ARCH_PKGS"
+
+                CC=${GNU_ARCH}-gcc
+
+                sudo dpkg --add-architecture $ARCH
+        fi
+
+        sudo apt-get update
+        sudo apt-get -y install $PKGS
+
+        CC=$CC make LINKTYPE=dynamic TARGET=$TARGET
