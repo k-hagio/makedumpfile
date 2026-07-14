@@ -8790,7 +8790,11 @@ fail:
 	if (bitmap_memory_parallel.buf != NULL)
 		free(bitmap_memory_parallel.buf);
 
-	pthread_exit(retval);
+	/*
+	 * Plain return: pthread_exit() would enter glibc's unwind path,
+	 * which requires loading libgcc_s.so.1.
+	 */
+	return retval;
 }
 
 int
@@ -8994,12 +8998,18 @@ finish:
 
 out:
 	if (threads != NULL) {
-		for (i = 0; i < info->num_threads; i++) {
-			if (threads[i] != NULL) {
-				res = pthread_cancel(*threads[i]);
-				if (res != 0 && res != ESRCH)
-					ERRMSG("Can't cancel thread %d. %s\n",
-							i, strerror(res));
+		/*
+		 * Cancel only on error; on success the workers are already
+		 * exiting and joining is sufficient.
+		 */
+		if (!ret) {
+			for (i = 0; i < info->num_threads; i++) {
+				if (threads[i] != NULL) {
+					res = pthread_cancel(*threads[i]);
+					if (res != 0 && res != ESRCH)
+						ERRMSG("Can't cancel thread %d. %s\n",
+								i, strerror(res));
+				}
 			}
 		}
 
