@@ -851,6 +851,12 @@ readpage_kdump_compressed(unsigned long long paddr, void *bufptr)
 		return FALSE;
 	}
 
+	if (pd.size > info->page_size) {
+		ERRMSG("Invalid page_desc.size %u > page_size %ld\n",
+			pd.size, info->page_size);
+		return FALSE;
+	}
+
 	if (lseek(info->fd_memory, pd.offset, SEEK_SET) < 0) {
 		ERRMSG("Can't seek %s. %s\n",
 				info->name_memory, strerror(errno));
@@ -963,6 +969,12 @@ readpage_kdump_compressed_parallel(int fd_memory, unsigned long long paddr,
 	if (!read_page_desc_parallel(fd_memory, paddr, &pd,
 						bitmap_memory_parallel)) {
 		ERRMSG("Can't read page_desc: %llx\n", paddr);
+		return FALSE;
+	}
+
+	if (pd.size > info->page_size) {
+		ERRMSG("Invalid page_desc.size %u > page_size %ld\n",
+			pd.size, info->page_size);
 		return FALSE;
 	}
 
