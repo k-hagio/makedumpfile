@@ -1650,6 +1650,7 @@ struct DumpInfo {
 	struct kdump_sub_header	*kh_memory;
 	struct dump_bitmap 		*bitmap_memory;
 	unsigned long			*valid_pages;
+	unsigned long			valid_pages_num;
 
 	/*
 	 * Dump file info:

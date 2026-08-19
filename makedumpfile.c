@@ -349,6 +349,11 @@ pfn_to_pos(mdf_pfn_t pfn)
 	unsigned long desc_pos;
 	mdf_pfn_t i;
 
+	if (pfn / BITMAP_SECT_LEN >= info->valid_pages_num) {
+		ERRMSG("pfn %llu is invalid\n", pfn);
+		return ULONG_MAX;
+	}
+
 	desc_pos = info->valid_pages[pfn / BITMAP_SECT_LEN];
 	for (i = round(pfn, BITMAP_SECT_LEN); i < pfn; i++)
 		if (is_dumpable(info->bitmap_memory, i, NULL))
@@ -362,6 +367,11 @@ pfn_to_pos_parallel(mdf_pfn_t pfn, struct dump_bitmap* bitmap_memory_parallel)
 {
 	unsigned long desc_pos;
 	mdf_pfn_t i;
+
+	if (pfn / BITMAP_SECT_LEN >= info->valid_pages_num) {
+		ERRMSG("pfn %llu is invalid\n", pfn);
+		return ULONG_MAX;
+	}
 
 	desc_pos = info->valid_pages[pfn / BITMAP_SECT_LEN];
 	for (i = round(pfn, BITMAP_SECT_LEN); i < pfn; i++)
@@ -388,6 +398,8 @@ read_page_desc(unsigned long long paddr, page_desc_t *pd)
 		* dh->block_size;
 	pfn = paddr_to_pfn(paddr);
 	desc_pos = pfn_to_pos(pfn);
+	if (desc_pos == ULONG_MAX)
+		return FALSE;
 	offset += (off_t)desc_pos * sizeof(page_desc_t);
 	if (lseek(info->fd_memory, offset, SEEK_SET) < 0) {
 		ERRMSG("Can't seek %s. %s\n",
@@ -432,6 +444,8 @@ read_page_desc_parallel(int fd_memory, unsigned long long paddr,
 		* dh->block_size;
 	pfn = paddr_to_pfn(paddr);
 	desc_pos = pfn_to_pos_parallel(pfn, bitmap_memory_parallel);
+	if (desc_pos == ULONG_MAX)
+		return FALSE;
 	offset += (off_t)desc_pos * sizeof(page_desc_t);
 	if (lseek(fd_memory, offset, SEEK_SET) < 0) {
 		ERRMSG("Can't seek %s. %s\n",
@@ -4044,6 +4058,7 @@ initialize_bitmap_memory(void)
 		free(bmp);
 		return FALSE;
 	}
+	info->valid_pages_num = max_sect_len;
 	for (i = 1, pfn = 0; i < max_sect_len; i++) {
 		info->valid_pages[i] = info->valid_pages[i - 1];
 		for (j = 0; j < BITMAP_SECT_LEN; j++, pfn++)
