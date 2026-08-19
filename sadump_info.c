@@ -698,6 +698,9 @@ restart:
 		}
 		smram_cpu_state_size /= sh->nr_cpus;
 
+		if (smram_cpu_state_size > sizeof(struct sadump_smram_cpu_state))
+			MSG("sadump: smram cpu state is larger than expected.");
+
 		offset -= sizeof(uint32_t);
 		offset += sh->sub_hdr_size * block_size;
 	}
@@ -1991,6 +1994,7 @@ static int
 get_smram_cpu_state(int apicid, struct sadump_smram_cpu_state *smram)
 {
 	unsigned long offset;
+	size_t read_size;
 
 	if (!si->sub_hdr_offset || !si->smram_cpu_state_size ||
 	    apicid >= si->sh_memory->nr_cpus)
@@ -2004,8 +2008,11 @@ get_smram_cpu_state(int apicid, struct sadump_smram_cpu_state *smram)
 		DEBUG_MSG("sadump: cannot lseek smram cpu state in dump sub "
 			  "header\n");
 
-	if (read(info->fd_memory, smram, si->smram_cpu_state_size) !=
-	    si->smram_cpu_state_size)
+	read_size = MIN(si->smram_cpu_state_size, sizeof(*smram));
+
+	memset(smram, 0, sizeof(*smram));
+
+	if (read(info->fd_memory, smram, read_size) != read_size)
 		DEBUG_MSG("sadump: cannot read smram cpu state in dump sub "
 			  "header\n");
 
