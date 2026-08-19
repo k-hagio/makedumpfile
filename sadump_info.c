@@ -873,7 +873,7 @@ sadump_initialize_bitmap_memory(void)
 	}
 	memset(bmp->buf, 0, BUFSIZE_BITMAP);
 
-	max_section = divideup(si->max_mapnr, SADUMP_PF_SECTION_NUM);
+	max_section = divideup_pow2(si->max_mapnr, SADUMP_PF_SECTION_NUM);
 
 	block_table = calloc(sizeof(unsigned long long), max_section);
 	if (block_table == NULL) {

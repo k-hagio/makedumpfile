@@ -34,6 +34,11 @@
 #define MIN(a,b)	((a) < (b) ? (a) : (b))
 
 #define divideup(x, y)	(((x) + ((y) - 1)) / (y))
+/*
+ * Port from kernel's DIV_ROUND_UP_POW2() macro, a safer variant of
+ * divideup() to prevent integer overflow, 'd' must be the power of 2
+ */
+#define divideup_pow2(n, d)	((n) / (d) + !!((n) & ((d) - 1)))
 #define round(x, y)	(((x) / (y)) * (y))
 #define roundup(x, y)	((((x) + ((y) - 1)) / (y)) * (y))
 
