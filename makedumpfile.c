@@ -1207,8 +1207,10 @@ is_page_size(long page_size)
 {
 	/*
 	 * Page size is restricted to a hamming weight of 1.
+	 * Limit page size within 1MB.
 	 */
-	if (page_size > 0 && !(page_size & (page_size - 1)))
+	if (page_size > 0 && !(page_size & (page_size - 1)) &&
+	    page_size <= (1 << 20))
 		return TRUE;
 
 	return FALSE;
