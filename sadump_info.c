@@ -2421,6 +2421,12 @@ sadump_kdump_backup_region_init(void)
 		return;
 	}
 
+	if (SIZE(kexec_segment)*ARRAY_LENGTH(kimage.segment) > sizeof(buf)) {
+		ERRMSG("Invalid kexec segment size: %lu\n",
+			SIZE(kexec_segment)*ARRAY_LENGTH(kimage.segment));
+		return;
+	}
+
 	if (!readmem(VADDR, kexec_crash_image_p+OFFSET(kimage.segment),
 		     buf, SIZE(kexec_segment)*ARRAY_LENGTH(kimage.segment))) {
 		ERRMSG("Can't read kexec_crash_image->segment. %s\n",
@@ -2453,6 +2459,11 @@ sadump_kdump_backup_region_init(void)
 		return;
 	}
 
+	if (SIZE(elf64_hdr) > sizeof(buf)) {
+		ERRMSG("Invalid elf64_hdr size: %lu\n", SIZE(elf64_hdr));
+		return;
+	}
+
 	if (!readmem(PADDR, elfcorehdr_p, buf, SIZE(elf64_hdr))) {
 		ERRMSG("Can't read elfcorehdr ELF header. %s\n",
 		       strerror(errno));
@@ -2462,6 +2473,11 @@ sadump_kdump_backup_region_init(void)
 	e_phnum = USHORT(buf + OFFSET(elf64_hdr.e_phnum));
 	e_phentsize = USHORT(buf + OFFSET(elf64_hdr.e_phentsize));
 	e_phoff = ULONG(buf + OFFSET(elf64_hdr.e_phoff));
+
+	if (e_phentsize > sizeof(buf)) {
+		ERRMSG("Invalid e_phentsize size: %u\n", e_phentsize);
+		return;
+	}
 
 	backup_src_start = backup_src_size = backup_offset = 0;
 	for (i = 0; i < e_phnum; ++i) {
