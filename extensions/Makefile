@@ -1,5 +1,5 @@
 CC ?= gcc
-CONTRIB_SO := sample.so erase_sample.so userstack.so
+CONTRIB_SO := sample.so erase_sample.so userstack.so elfheader.so
 
 all: $(CONTRIB_SO)
 
