@@ -36,7 +36,7 @@ INIT_OPT_MOD_STRUCT_MEMBER(vmlinux, mm_struct, mm_rb);
  * PG_UNDECID to let every page fallbacks to traditinal page-flags
  * check routine or let other extensions make the decision.
  */
-int extension_callback(unsigned long pfn, const void *pcache)
+int extension_callback(unsigned long pfn, const void *pcache, const struct pginfo *i)
 {
 	return PG_UNDECID;
 }

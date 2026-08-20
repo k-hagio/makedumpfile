@@ -6495,11 +6495,12 @@ __exclude_unnecessary_pages(unsigned long mem_map,
 	mdf_pfn_t pfn_read_start, pfn_read_end;
 	unsigned char *page_cache;
 	unsigned char *pcache;
-	unsigned int _count, _mapcount = 0, compound_order = 0;
+	struct pginfo i;
 	unsigned int order_offset, dtor_offset;
-	unsigned long flags, mapping, private = 0;
-	unsigned long compound_dtor, compound_head = 0;
 	int filter_pg;
+
+	i._mapcount = i.compound_order = 0;
+	i.private = i.compound_dtor = i.compound_head = 0;
 
 	/*
 	 * If a multi-page exclusion is pending, do it first
@@ -6572,21 +6573,21 @@ __exclude_unnecessary_pages(unsigned long mem_map,
 			pfn_read_end   = pfn + pfn_mm - 1;
 		}
 
-		flags   = ULONG(pcache + OFFSET(page.flags));
-		_count  = UINT(pcache + OFFSET(page._refcount));
-		mapping = ULONG(pcache + OFFSET(page.mapping));
+		i.flags   = ULONG(pcache + OFFSET(page.flags));
+		i._count  = UINT(pcache + OFFSET(page._refcount));
+		i.mapping = ULONG(pcache + OFFSET(page.mapping));
 
 		if (OFFSET(page._mapcount) != NOT_FOUND_STRUCTURE)
-			_mapcount = UINT(pcache + OFFSET(page._mapcount));
+			i._mapcount = UINT(pcache + OFFSET(page._mapcount));
 
-		compound_order = 0;
-		compound_dtor = 0;
+		i.compound_order = 0;
+		i.compound_dtor = 0;
 		/*
 		 * The last pfn of the mem_map cache must not be compound head
 		 * page since all compound pages are aligned to its page order
 		 * and PGMM_CACHED is a power of 2.
 		 */
-		if ((index_pg < PGMM_CACHED - 1) && isCompoundHead(flags)) {
+		if ((index_pg < PGMM_CACHED - 1) && isCompoundHead(i.flags)) {
 			unsigned char *addr = pcache + SIZE(page);
 
 			/*
@@ -6596,10 +6597,10 @@ __exclude_unnecessary_pages(unsigned long mem_map,
 			if (NUMBER(PAGE_HUGETLB_MAPCOUNT_VALUE) != NOT_FOUND_NUMBER) {
 				unsigned long _flags_1 = ULONG(addr + OFFSET(page.flags));
 
-				compound_order = _flags_1 & 0xff;
+				i.compound_order = _flags_1 & 0xff;
 
-				if (_mapcount == (int)NUMBER(PAGE_HUGETLB_MAPCOUNT_VALUE))
-					compound_dtor = IS_HUGETLB;
+				if (i._mapcount == (int)NUMBER(PAGE_HUGETLB_MAPCOUNT_VALUE))
+					i.compound_dtor = IS_HUGETLB;
 
 				goto check_order;
 			}
@@ -6611,19 +6612,19 @@ __exclude_unnecessary_pages(unsigned long mem_map,
 			if (NUMBER(PG_hugetlb) != NOT_FOUND_NUMBER) {
 				unsigned long _flags_1 = ULONG(addr + OFFSET(page.flags));
 
-				compound_order = _flags_1 & 0xff;
+				i.compound_order = _flags_1 & 0xff;
 
 				if (_flags_1 & (1UL << NUMBER(PG_hugetlb)))
-					compound_dtor = IS_HUGETLB;
+					i.compound_dtor = IS_HUGETLB;
 
 				goto check_order;
 			}
 
 			if (order_offset) {
 				if (info->kernel_version >= KERNEL_VERSION(4, 16, 0))
-					compound_order = UCHAR(addr + order_offset);
+					i.compound_order = UCHAR(addr + order_offset);
 				else
-					compound_order = USHORT(addr + order_offset);
+					i.compound_order = USHORT(addr + order_offset);
 			}
 
 			if (dtor_offset) {
@@ -6632,40 +6633,40 @@ __exclude_unnecessary_pages(unsigned long mem_map,
 				 * to the ID of it since linux-4.4.
 				 */
 				if (info->kernel_version >= KERNEL_VERSION(4, 16, 0))
-					compound_dtor = UCHAR(addr + dtor_offset);
+					i.compound_dtor = UCHAR(addr + dtor_offset);
 				else if (info->kernel_version >= KERNEL_VERSION(4, 4, 0))
-					compound_dtor = USHORT(addr + dtor_offset);
+					i.compound_dtor = USHORT(addr + dtor_offset);
 				else
-					compound_dtor = ULONG(addr + dtor_offset);
+					i.compound_dtor = ULONG(addr + dtor_offset);
 			}
 check_order:
-			if ((compound_order >= sizeof(unsigned long) * 8)
-			    || ((pfn & ((1UL << compound_order) - 1)) != 0)) {
+			if ((i.compound_order >= sizeof(unsigned long) * 8)
+			    || ((pfn & ((1UL << i.compound_order) - 1)) != 0)) {
 				/* Invalid order */
-				compound_order = 0;
+				i.compound_order = 0;
 			}
 		}
 		if (OFFSET(page.compound_head) != NOT_FOUND_STRUCTURE)
-			compound_head = ULONG(pcache + OFFSET(page.compound_head));
+			i.compound_head = ULONG(pcache + OFFSET(page.compound_head));
 
 		if (OFFSET(page.private) != NOT_FOUND_STRUCTURE)
-			private = ULONG(pcache + OFFSET(page.private));
+			i.private = ULONG(pcache + OFFSET(page.private));
 
-		nr_pages = 1 << compound_order;
+		nr_pages = 1 << i.compound_order;
 		pfn_counter = NULL;
 
 		/*
 		 * Excludable compound tail pages must have already been excluded by
 		 * exclude_range(), don't need to check them here.
 		 */
-		if (compound_head & 1)
+		if (i.compound_head & 1)
 			continue;
 
 		/*
 		 * Include pages that specified by user via
 		 * makedumpfile extensions
 		 */
-		filter_pg = run_extension_callback(pfn, pcache);
+		filter_pg = run_extension_callback(pfn, pcache, &i);
 		if (filter_pg == PG_INCLUDE)
 			continue;
 
@@ -6675,14 +6676,14 @@ check_order:
 		 */
 		if ((info->dump_level & DL_EXCLUDE_FREE)
 		    && info->page_is_buddy
-		    && info->page_is_buddy(flags, _mapcount, private, _count)) {
+		    && info->page_is_buddy(i.flags, i._mapcount, i.private, i._count)) {
 			if ((ARRAY_LENGTH(zone.free_area) != NOT_FOUND_STRUCTURE) &&
-			    (private >= ARRAY_LENGTH(zone.free_area))) {
+			    (i.private >= ARRAY_LENGTH(zone.free_area))) {
 				MSG("WARNING: Invalid free page order: pfn=%llx, order=%lu, max order=%lu\n",
-				    pfn, private, ARRAY_LENGTH(zone.free_area) - 1);
+				    pfn, i.private, ARRAY_LENGTH(zone.free_area) - 1);
 				continue;
 			}
-			nr_pages = 1 << private;
+			nr_pages = 1 << i.private;
 			pfn_counter = &pfn_free;
 		}
 		/*
@@ -6692,7 +6693,7 @@ check_order:
 		 * accepted immediately without being on the list.
 		 */
 		else if ((info->dump_level & DL_EXCLUDE_FREE)
-			&& isUnaccepted(_mapcount)) {
+			&& isUnaccepted(i._mapcount)) {
 			nr_pages = 1 << (ARRAY_LENGTH(zone.free_area) - 1);
 			pfn_counter = &pfn_free;
 		}
@@ -6700,17 +6701,17 @@ check_order:
 		 * Exclude the non-private cache page.
 		 */
 		else if ((info->dump_level & DL_EXCLUDE_CACHE)
-		    && is_cache_page(flags)
-		    && !isPrivate(flags) && !isAnon(mapping, flags, _mapcount)) {
+		    && is_cache_page(i.flags)
+		    && !isPrivate(i.flags) && !isAnon(i.mapping, i.flags, i._mapcount)) {
 			pfn_counter = &pfn_cache;
 		}
 		/*
 		 * Exclude the cache page whether private or non-private.
 		 */
 		else if ((info->dump_level & DL_EXCLUDE_CACHE_PRI)
-		    && is_cache_page(flags)
-		    && !isAnon(mapping, flags, _mapcount)) {
-			if (isPrivate(flags))
+		    && is_cache_page(i.flags)
+		    && !isAnon(i.mapping, i.flags, i._mapcount)) {
+			if (isPrivate(i.flags))
 				pfn_counter = &pfn_cache_private;
 			else
 				pfn_counter = &pfn_cache;
@@ -6721,19 +6722,19 @@ check_order:
 		 *  - hugetlbfs pages
 		 */
 		else if ((info->dump_level & DL_EXCLUDE_USER_DATA)
-			 && (isAnon(mapping, flags, _mapcount) || isHugetlb(compound_dtor))) {
+			 && (isAnon(i.mapping, i.flags, i._mapcount) || isHugetlb(i.compound_dtor))) {
 			pfn_counter = &pfn_user;
 		}
 		/*
 		 * Exclude the hwpoison page.
 		 */
-		else if (isHWPOISON(flags)) {
+		else if (isHWPOISON(i.flags)) {
 			pfn_counter = &pfn_hwpoison;
 		}
 		/*
 		 * Exclude pages that are logically offline.
 		 */
-		else if (isOffline(flags, _mapcount)) {
+		else if (isOffline(i.flags, i._mapcount)) {
 			pfn_counter = &pfn_offline;
 		}
 		/*
