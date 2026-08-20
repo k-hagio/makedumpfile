@@ -2647,6 +2647,63 @@ is_zero_page(unsigned char *buf, long page_size)
 	return TRUE;
 }
 
+/* For Linux 6.6 and later */
+#define IS_HUGETLB	((unsigned long)-1)
+
+static inline int
+isHugetlb(unsigned long dtor)
+{
+	return (dtor == IS_HUGETLB)
+		|| ((NUMBER(HUGETLB_PAGE_DTOR) != NOT_FOUND_NUMBER)
+		   && (NUMBER(HUGETLB_PAGE_DTOR) == dtor))
+		|| ((SYMBOL(free_huge_page) != NOT_FOUND_SYMBOL)
+		   && (SYMBOL(free_huge_page) == dtor));
+}
+
+static inline int
+isSlab(unsigned long flags, unsigned int _mapcount)
+{
+	/* Linux 6.10 and later */
+	if (NUMBER(PAGE_SLAB_MAPCOUNT_VALUE) != NOT_FOUND_NUMBER) {
+		if (_mapcount == (int)NUMBER(PAGE_SLAB_MAPCOUNT_VALUE))
+			return TRUE;
+	}
+
+	return flags & (1UL << NUMBER(PG_slab));
+}
+
+static inline int
+isOffline(unsigned long flags, unsigned int _mapcount)
+{
+	if (NUMBER(PAGE_OFFLINE_MAPCOUNT_VALUE) == NOT_FOUND_NUMBER)
+		return FALSE;
+
+	if (isSlab(flags, _mapcount))
+		return FALSE;
+
+	if (_mapcount == (int)NUMBER(PAGE_OFFLINE_MAPCOUNT_VALUE))
+		return TRUE;
+
+	return FALSE;
+}
+
+static inline int
+is_cache_page(unsigned long flags)
+{
+	if (isLRU(flags))
+		return TRUE;
+
+	/* PG_swapcache is valid only if:
+	 *   a. PG_swapbacked bit is set, or
+	 *   b. PG_swapbacked did not exist (kernels before 4.10-rc1).
+	 */
+	if ((NUMBER(PG_swapbacked) == NOT_FOUND_NUMBER || isSwapBacked(flags))
+	    && isSwapCache(flags))
+		return TRUE;
+
+	return FALSE;
+}
+
 void write_vmcoreinfo_data(void);
 int set_bit_on_1st_bitmap(mdf_pfn_t pfn, struct cycle *cycle);
 int clear_bit_on_1st_bitmap(mdf_pfn_t pfn, struct cycle *cycle);
