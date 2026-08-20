@@ -314,7 +314,7 @@ int run_extension_callback(unsigned long pfn, const void *pcache, const struct p
 	for (int i = 0; i < handle_cbs_len; i++) {
 		if (handle_cbs[i]->cb) {
 			result = handle_cbs[i]->cb(pfn, pcache, inf);
-			if (result == PG_INCLUDE) {
+			if (result == PG_INCLUDE || result == PG_INCLUDE_HEAD) {
 				ret = result;
 				goto out;
 			} else if (result == PG_EXCLUDE) {
