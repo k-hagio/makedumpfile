@@ -6697,6 +6697,15 @@ check_order:
 			 */
 			num_extension_retained += nr_pages;
 			continue;
+		} else if (filter_pg == PG_INCLUDE_HEAD) {
+			num_extension_retained += 1;
+			if (nr_pages == 1)
+				continue;
+
+			/* FALL THROUGH and exclude tail pages */
+			pfn++;
+			mem_map += SIZE(page);
+			nr_pages--;
 		}
 
 		/*

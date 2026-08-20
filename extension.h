@@ -4,9 +4,10 @@
 
 struct pginfo;
 enum {
-	PG_INCLUDE,	// Exntesion will keep the page
-	PG_EXCLUDE,	// Exntesion will discard the page
-	PG_UNDECID,	// Exntesion makes no decision
+	PG_INCLUDE,		/* Extension will keep the full page */
+	PG_INCLUDE_HEAD,	/* Extension will keep just the head page */
+	PG_EXCLUDE,		/* Extension will discard the full page */
+	PG_UNDECID,		/* Extension makes no decision */
 };
 int run_extension_callback(unsigned long pfn, const void *pcache, const struct pginfo *i);
 void init_extensions(void);
