@@ -161,8 +161,8 @@ test_bit(int nr, unsigned long addr)
 #define isSwapBacked(flags)	test_bit(NUMBER(PG_swapbacked), flags)
 #define isHWPOISON(flags)	(test_bit(NUMBER(PG_hwpoison), flags) \
 				&& (NUMBER(PG_hwpoison) != NOT_FOUND_NUMBER))
-#define isAnon(mapping, flags, _mapcount) \
-	(((unsigned long)mapping & PAGE_MAPPING_ANON) != 0 && !isSlab(flags, _mapcount))
+#define isAnon(i) \
+	(((unsigned long)(i)->mapping & PAGE_MAPPING_ANON) != 0 && !isSlab(i))
 #define isUnaccepted(_mapcount)	(_mapcount == (int)NUMBER(PAGE_UNACCEPTED_MAPCOUNT_VALUE) \
 				&& (NUMBER(PAGE_UNACCEPTED_MAPCOUNT_VALUE) != NOT_FOUND_NUMBER))
 
@@ -1766,8 +1766,7 @@ struct DumpInfo {
 	/*
 	 * for filtering free pages managed by buddy system:
 	 */
-	int (*page_is_buddy)(unsigned long flags, unsigned int _mapcount,
-			     unsigned long private, unsigned int _count);
+	int (*page_is_buddy)(const struct pginfo *);
 	/*
 	 * for cyclic_splitting mode, setup splitblock_size
 	 */
@@ -2660,28 +2659,26 @@ isHugetlb(unsigned long dtor)
 		   && (SYMBOL(free_huge_page) == dtor));
 }
 
-static inline int
-isSlab(unsigned long flags, unsigned int _mapcount)
+static inline int isSlab(const struct pginfo *i)
 {
 	/* Linux 6.10 and later */
 	if (NUMBER(PAGE_SLAB_MAPCOUNT_VALUE) != NOT_FOUND_NUMBER) {
-		if (_mapcount == (int)NUMBER(PAGE_SLAB_MAPCOUNT_VALUE))
+		if (i->_mapcount == (int)NUMBER(PAGE_SLAB_MAPCOUNT_VALUE))
 			return TRUE;
 	}
 
-	return flags & (1UL << NUMBER(PG_slab));
+	return i->flags & (1UL << NUMBER(PG_slab));
 }
 
-static inline int
-isOffline(unsigned long flags, unsigned int _mapcount)
+static inline int isOffline(const struct pginfo *i)
 {
 	if (NUMBER(PAGE_OFFLINE_MAPCOUNT_VALUE) == NOT_FOUND_NUMBER)
 		return FALSE;
 
-	if (isSlab(flags, _mapcount))
+	if (isSlab(i))
 		return FALSE;
 
-	if (_mapcount == (int)NUMBER(PAGE_OFFLINE_MAPCOUNT_VALUE))
+	if (i->_mapcount == (int)NUMBER(PAGE_OFFLINE_MAPCOUNT_VALUE))
 		return TRUE;
 
 	return FALSE;

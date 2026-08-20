@@ -6037,10 +6037,9 @@ exclude_free_page(struct cycle *cycle)
  * For the kernel versions from v2.6.17 to v2.6.37.
  */
 static int
-page_is_buddy_v2(unsigned long flags, unsigned int _mapcount,
-			unsigned long private, unsigned int _count)
+page_is_buddy_v2(const struct pginfo *i)
 {
-	if (flags & (1UL << NUMBER(PG_buddy)))
+	if (i->flags & (1UL << NUMBER(PG_buddy)))
 		return TRUE;
 
 	return FALSE;
@@ -6050,13 +6049,12 @@ page_is_buddy_v2(unsigned long flags, unsigned int _mapcount,
  * For v2.6.38 and later kernel versions.
  */
 static int
-page_is_buddy_v3(unsigned long flags, unsigned int _mapcount,
-			unsigned long private, unsigned int _count)
+page_is_buddy_v3(const struct pginfo *i)
 {
-	if (isSlab(flags, _mapcount))
+	if (isSlab(i))
 		return FALSE;
 
-	if (_mapcount == (int)NUMBER(PAGE_BUDDY_MAPCOUNT_VALUE))
+	if (i->_mapcount == (int)NUMBER(PAGE_BUDDY_MAPCOUNT_VALUE))
 		return TRUE;
 
 	return FALSE;
@@ -6618,7 +6616,7 @@ check_order:
 		 */
 		if ((info->dump_level & DL_EXCLUDE_FREE)
 		    && info->page_is_buddy
-		    && info->page_is_buddy(i.flags, i._mapcount, i.private, i._count)) {
+		    && info->page_is_buddy(&i)) {
 			if ((ARRAY_LENGTH(zone.free_area) != NOT_FOUND_STRUCTURE) &&
 			    (i.private >= ARRAY_LENGTH(zone.free_area))) {
 				MSG("WARNING: Invalid free page order: pfn=%llx, order=%lu, max order=%lu\n",
@@ -6644,7 +6642,7 @@ check_order:
 		 */
 		else if ((info->dump_level & DL_EXCLUDE_CACHE)
 		    && is_cache_page(i.flags)
-		    && !isPrivate(i.flags) && !isAnon(i.mapping, i.flags, i._mapcount)) {
+		    && !isPrivate(i.flags) && !isAnon(&i)) {
 			pfn_counter = &pfn_cache;
 		}
 		/*
@@ -6652,7 +6650,7 @@ check_order:
 		 */
 		else if ((info->dump_level & DL_EXCLUDE_CACHE_PRI)
 		    && is_cache_page(i.flags)
-		    && !isAnon(i.mapping, i.flags, i._mapcount)) {
+		    && !isAnon(&i)) {
 			if (isPrivate(i.flags))
 				pfn_counter = &pfn_cache_private;
 			else
@@ -6664,7 +6662,7 @@ check_order:
 		 *  - hugetlbfs pages
 		 */
 		else if ((info->dump_level & DL_EXCLUDE_USER_DATA)
-			 && (isAnon(i.mapping, i.flags, i._mapcount) || isHugetlb(i.compound_dtor))) {
+			 && (isAnon(&i) || isHugetlb(i.compound_dtor))) {
 			pfn_counter = &pfn_user;
 		}
 		/*
@@ -6676,7 +6674,7 @@ check_order:
 		/*
 		 * Exclude pages that are logically offline.
 		 */
-		else if (isOffline(i.flags, i._mapcount)) {
+		else if (isOffline(&i)) {
 			pfn_counter = &pfn_offline;
 		}
 		/*
