@@ -2,12 +2,13 @@
 #define _EXTENSION_H
 #include <stdbool.h>
 
+struct pginfo;
 enum {
 	PG_INCLUDE,	// Exntesion will keep the page
 	PG_EXCLUDE,	// Exntesion will discard the page
 	PG_UNDECID,	// Exntesion makes no decision
 };
-int run_extension_callback(unsigned long pfn, const void *pcache);
+int run_extension_callback(unsigned long pfn, const void *pcache, const struct pginfo *i);
 void init_extensions(void);
 void cleanup_extensions(void);
 bool add_extension_opts(char *opt);

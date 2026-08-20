@@ -1507,6 +1507,24 @@ struct ppc64_vmemmap {
 	unsigned long		virt;
 };
 
+/*
+ * Per-page information determined during page filtering which may be useful
+ * to extensions making their decisions
+ */
+struct pginfo {
+	unsigned long flags;
+	unsigned long mapping;
+	/* Present whenever OFFSET(page.private) != NOT_FOUND_STRUCTURE */
+	unsigned long private;
+	unsigned long compound_dtor;
+	/* Present whenever OFFSET(page.compound_head) != NOT_FOUND_STRUCTURE */
+	unsigned long compound_head;
+	unsigned int _count;
+	/* Present whenever OFFSET(page._mapcount) != NOT_FOUND_STRUCTURE */
+	unsigned int _mapcount;
+	unsigned int compound_order;
+};
+
 struct DumpInfo {
 	int32_t		kernel_version;      /* version of first kernel*/
 	struct timeval	timestamp;

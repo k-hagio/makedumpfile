@@ -10,7 +10,7 @@
 #include "kallsyms.h"
 #include "btf_info.h"
 
-typedef int (*callback_fn)(unsigned long, const void *);
+typedef int (*callback_fn)(unsigned long, const void *, const struct pginfo *);
 
 struct extension_handle_cb {
 	void *handle;
@@ -306,14 +306,14 @@ fail:
  * 1) Include the page if anyone says PG_INCLUDE, and
  * 2) Exclude the page if no one says PG_INCLUDE, but one or more say PG_EXCLUDE.
  */
-int run_extension_callback(unsigned long pfn, const void *pcache)
+int run_extension_callback(unsigned long pfn, const void *pcache, const struct pginfo *inf)
 {
 	int result;
 	int ret = PG_UNDECID;
 
 	for (int i = 0; i < handle_cbs_len; i++) {
 		if (handle_cbs[i]->cb) {
-			result = handle_cbs[i]->cb(pfn, pcache);
+			result = handle_cbs[i]->cb(pfn, pcache, inf);
 			if (result == PG_INCLUDE) {
 				ret = result;
 				goto out;
@@ -341,7 +341,7 @@ bool add_extension_opts(char *opt)
 	return false;
 }
 
-int run_extension_callback(unsigned long pfn, const void *pcache)
+int run_extension_callback(unsigned long pfn, const void *pcache, const struct pginfo *i)
 {
 	return PG_UNDECID;
 }
