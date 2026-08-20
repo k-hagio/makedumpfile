@@ -6572,14 +6572,6 @@ __exclude_unnecessary_pages(unsigned long mem_map,
 			pfn_read_end   = pfn + pfn_mm - 1;
 		}
 
-		/*
-		 * Include pages that specified by user via
-		 * makedumpfile extensions
-		 */
-		filter_pg = run_extension_callback(pfn, pcache);
-		if (filter_pg == PG_INCLUDE)
-			continue;
-
 		flags   = ULONG(pcache + OFFSET(page.flags));
 		_count  = UINT(pcache + OFFSET(page._refcount));
 		mapping = ULONG(pcache + OFFSET(page.mapping));
@@ -6666,14 +6658,22 @@ check_order:
 		 * Excludable compound tail pages must have already been excluded by
 		 * exclude_range(), don't need to check them here.
 		 */
-		if (compound_head & 1) {
+		if (compound_head & 1)
 			continue;
-		}
+
+		/*
+		 * Include pages that specified by user via
+		 * makedumpfile extensions
+		 */
+		filter_pg = run_extension_callback(pfn, pcache);
+		if (filter_pg == PG_INCLUDE)
+			continue;
+
 		/*
 		 * Exclude the free page managed by a buddy
 		 * Use buddy identification of free pages whether cyclic or not.
 		 */
-		else if ((info->dump_level & DL_EXCLUDE_FREE)
+		if ((info->dump_level & DL_EXCLUDE_FREE)
 		    && info->page_is_buddy
 		    && info->page_is_buddy(flags, _mapcount, private, _count)) {
 			if ((ARRAY_LENGTH(zone.free_area) != NOT_FOUND_STRUCTURE) &&
@@ -6741,7 +6741,6 @@ check_order:
 		 * makedumpfile extensions
 		 */
 		else if (filter_pg == PG_EXCLUDE) {
-			nr_pages = 1;
 			pfn_counter = &pfn_extension;
 		}
 		/*
