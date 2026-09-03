@@ -279,14 +279,15 @@
 
   - The kexec mailing list archives
     http://lists.infradead.org/pipermail/kexec/
-  - The fastboot mailing list archives
-    https://lists.linux-foundation.org/pipermail/fastboot/
 
 * BUG REPORT
   If finding some bugs, please send the information to the following:
-  Masamitsu Yamazaki <yamazaki-msmt@nec.com>
-  Kazuhito Hagio <k-hagio-ab@nec.com>
-  kexec-ml <kexec@lists.infradead.org>
+
+    kexec-ml <kexec@lists.infradead.org>
+
+  You can subscribe to the list here:
+  - kexec Info Page
+    https://lists.infradead.org/mailman/listinfo/kexec
 
   Please refer to the project page's wiki:
   https://github.com/makedumpfile/makedumpfile/wiki
